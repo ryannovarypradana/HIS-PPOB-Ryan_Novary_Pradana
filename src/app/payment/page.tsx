@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react'; // Import Suspense
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
@@ -9,13 +9,14 @@ import { fetchServicesForPayment, setSelectedService, performPayment, resetPayme
 import { logout } from '../../store/authSlice';
 import { Service } from '../../store/paymentSlice';
 import Button from '@/components/ui/Button';
-import toast, { Toaster } from 'react-hot-toast'; 
+import toast, { Toaster } from 'react-hot-toast';
 import Link from 'next/link';
 
-export default function PaymentPage() {
+// Create a separate component for the logic that uses useSearchParams
+function PaymentPageContent() {
   const router = useRouter();
   const dispatch: AppDispatch = useDispatch();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams(); // This is now inside the Suspense boundary
 
   const { userProfile, balance, loading: dashboardLoading, error: dashboardError } = useSelector(
     (state: RootState) => state.dashboard
@@ -24,10 +25,6 @@ export default function PaymentPage() {
     (state: RootState) => state.payment
   );
   const { token: authToken, isLoading: authLoading } = useSelector((state: RootState) => state.auth);
-
-  
-  
-  
 
   const [mounted, setMounted] = useState(false);
   const [showBalance, setShowBalance] = useState(false);
@@ -66,10 +63,8 @@ export default function PaymentPage() {
         );
         if (foundService) {
           dispatch(setSelectedService(foundService));
-          
-          
         } else {
-          toast.error('Layanan yang diminta tidak ditemukan.'); 
+          toast.error('Layanan yang diminta tidak ditemukan.');
           dispatch(setSelectedService(null));
         }
       } else {
@@ -89,17 +84,13 @@ export default function PaymentPage() {
   };
 
   const handlePayment = async () => {
-    
-    
-    
-
     if (!selectedService) {
-      toast.error('Silakan pilih layanan yang akan dibayar.'); 
+      toast.error('Silakan pilih layanan yang akan dibayar.');
       return;
     }
 
     if (balance && selectedService.service_tariff > balance.balance) {
-        toast.error('Saldo tidak cukup untuk melakukan pembayaran ini.'); 
+        toast.error('Saldo tidak cukup untuk melakukan pembayaran ini.');
         return;
     }
 
@@ -110,15 +101,14 @@ export default function PaymentPage() {
       })).unwrap();
 
       const successMessage = `Pembayaran ${selectedService.service_name} sebesar Rp ${selectedService.service_tariff.toLocaleString('id-ID')} berhasil!`;
-      toast.success(successMessage); 
+      toast.success(successMessage);
 
-      dispatch(fetchBalance()); 
-      dispatch(setSelectedService(null)); 
-      router.push('/'); 
+      dispatch(fetchBalance());
+      dispatch(setSelectedService(null));
+      router.push('/');
     } catch (err: any) {
       const errorMessage = `Pembayaran Gagal: ${err?.message || 'Terjadi kesalahan.'}`;
-      toast.error(errorMessage); 
-      
+      toast.error(errorMessage);
     }
   };
 
@@ -158,12 +148,12 @@ export default function PaymentPage() {
 
   return (
     <div className="min-h-screen bg-white font-sans pb-8">
-      <Toaster /> {/* Tambahkan komponen Toaster di sini */}
+      <Toaster />
 
       {/* Top Bar - Disamakan dengan Dashboard */}
       <nav className="flex justify-between items-center px-8 py-4 bg-white shadow-sm">
         <Link href="/" passHref>
-                <div className="flex items-center cursor-pointer"> {/* Tambahkan cursor-pointer untuk indikasi visual */}
+                <div className="flex items-center cursor-pointer">
                   <Image src="/images/Logo.png" alt="SIMS PPOB Logo" width={24} height={24} className="mr-2"/>
                   <span className="text-red-500 font-bold text-lg">SIMS PPOB</span>
                 </div>
@@ -269,5 +259,14 @@ export default function PaymentPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PaymentPage() {
+  return (
+    // Wrap the component that uses useSearchParams with Suspense
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen bg-white">Memuat halaman pembayaran...</div>}>
+      <PaymentPageContent />
+    </Suspense>
   );
 }
